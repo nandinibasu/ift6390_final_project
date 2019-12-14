@@ -24,8 +24,8 @@ pip install -r requirements.txt  # Install the requirements
 
 
 ### Data 
-- Download the [Heart Disease dataset and](https://datahub.io/machine-learning/heart-statlog#data) unzip it in `data/heart`.
-- Download the [Cervical Cancer dataset](https://datahub.io/machine-learning/cervical-cancer#data) and unzip it in `data/cervical`. 
+- Download the [Heart Disease dataset](https://datahub.io/machine-learning/heart-statlog#data) unzip it in `data/heart-statlog`.
+- Download the [Cervical Cancer dataset](https://datahub.io/machine-learning/cervical-cancer#data) and unzip it in `data/cervical-cancer`. 
 
 
 ### Classifiers
