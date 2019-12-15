@@ -10,16 +10,17 @@ import numpy as np
 import pathlib
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 
 _TEST_SIZE = 0.2
 _SEED = 544
 _DATA_PATH = pathlib.Path("data/")
-_VALID_DATASET_NAMES = ["heart-statlog", "cervical-cancer"]
-_CLASSIFIERS = {
+VALID_DATASET_NAMES = ["heart-statlog", "cervical-cancer"]
+CLASSIFIERS = {
     "MLP": (
         MLPClassifier(early_stopping=True, random_state=_SEED),
         {
@@ -35,18 +36,31 @@ _CLASSIFIERS = {
             "max_depth": [5, 10, 20]
         }
     ),
-    "LR": (
-        LogisticRegression(solver="liblinear", multi_class="ovr", random_state=_SEED),
+    "Decision Tree": (
+        DecisionTreeClassifier(random_state=_SEED),
         {
-            "penalty": ["l2", "l1"],
+            "max_depth": [5, 10, 20]
+        }
+    ),
+    "LR_L1": (
+        LogisticRegression(solver="liblinear", penalty="l1", multi_class="ovr", random_state=_SEED),
+        {
             # Smaller means more regularization
             "C": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
         }
     ),
+    "LR_L2": (
+        LogisticRegression(solver="liblinear", multi_class="ovr", penalty="l2", random_state=_SEED),
+        {
+            # Smaller means more regularization
+            "C": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
+        }
+    ),
+
 }
 
 def run_grid_search(model_name, X_train, y_train):
-    clf, params = _CLASSIFIERS[model_name]
+    clf, params = CLASSIFIERS[model_name]
 
     clf = GridSearchCV(clf, params, cv=5, n_jobs=-1)
     clf.fit(X_train, y_train)
@@ -66,16 +80,22 @@ def _to_float(a_str):
     return a_float
 
 
-def _get_dataset(dataset_name):
+def read_dataset(dataset_name, head=False):
     data_path = _DATA_PATH / dataset_name / "data" / f"{dataset_name}_csv.csv"
     X, y = [], []
     with open(data_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for i, row in enumerate(csv_reader):
             if i == 0:
+                if head:
+                    return row[:-1], row[-1]
                 continue
             X.append([_to_float(el) for el in row[:-1]])
             y.append(_to_float(row[-1]))
+    return X, y
+
+def _get_dataset(dataset_name):
+    X, y = read_dataset(dataset_name)
     return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
 
 def _get_accuracy(model, X, y):
@@ -103,13 +123,13 @@ def _parse_args():
         "-m",
         "--model-name",
         type=str,
-        help=f"One of {list(_CLASSIFIERS.keys())}",
+        help=f"One of {list(CLASSIFIERS.keys())}",
     )
     parser.add_argument(
         "-d",
         "--dataset-name",
         type=str,
-        help=f"One of {_VALID_DATASET_NAMES}",
+        help=f"One of {VALID_DATASET_NAMES}",
     )
     return vars(parser.parse_args())
 
