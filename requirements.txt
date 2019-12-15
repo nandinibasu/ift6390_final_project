@@ -2,3 +2,4 @@ numpy
 pathlib
 scipy
 sklearn
+plotly==4.4.1

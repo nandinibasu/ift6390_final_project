@@ -15,61 +15,86 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 
+_TEST_SIZE = 0.2
+_SEED = 544
 _DATA_PATH = pathlib.Path("data/")
 _VALID_DATASET_NAMES = ["heart-statlog", "cervical-cancer"]
 _CLASSIFIERS = {
     "MLP": (
-        MLPClassifier(hidden_layer_sizes=275, early_stopping=True, validation_fraction=0.005),
+        MLPClassifier(early_stopping=True, random_state=_SEED),
         {
-            "hidden_layer_sizes": [225, 250, 275],
-            # "learning_rate_init": [225, 250, 275],
+            "validation_fraction": [0.005, 0.01, 0.05, 0.1],
+            "hidden_layer_sizes": [(10, 10), 25, (25, 25), 50, 100, (50, 50), 150, 250],
+            "alpha": [0.0001, 0.001, 0.005, 0.00005, 0.]
         }
     ),
-    "Random Forest": (
-        RandomForestClassifier(random_state=42),
+    "RF": (
+        RandomForestClassifier(random_state=_SEED),
         {
             "n_estimators": [5, 10, 20],
             "max_depth": [5, 10, 20]
         }
     ),
-    "Logistic Regression": (
-        LogisticRegression(solver="saga", multi_class="liblinear"),
+    "LR": (
+        LogisticRegression(solver="liblinear", multi_class="ovr", random_state=_SEED),
         {
-            "penalty": ["l2", "l1", "elasticnet", "none"],
-            "C": [1.0, 0.9, 0.8, 0.7]  # Smaller means more regularization
+            "penalty": ["l2", "l1"],
+            # Smaller means more regularization
+            "C": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
         }
     ),
 }
 
-def run_grid_search(clf, parameters, X_train, X_val, y_train, y_val):
-    import pdb; pdb.set_trace()
-    clf = GridSearchCV(clf, parameters, cv=5, n_jobs=-1)
-    clf.fit(X_train, y_train)
+def run_grid_search(model_name, X_train, y_train):
+    clf, params = _CLASSIFIERS[model_name]
 
-    prediction = clf.predict(X_val)
-    accuracy = np.mean(prediction == y_val)
-    return accuracy, clf.best_params_
+    clf = GridSearchCV(clf, params, cv=5, n_jobs=-1)
+    clf.fit(X_train, y_train)
+    return clf
+
+def _to_float(a_str):
+    if a_str == "present":
+        return 1.
+    elif a_str == "absent":
+        return 0.
+
+    try:
+        a_float = float(a_str)
+    except ValueError:
+        # TODO handle missing data
+        a_float = 0.
+    return a_float
 
 
 def _get_dataset(dataset_name):
     data_path = _DATA_PATH / dataset_name / "data" / f"{dataset_name}_csv.csv"
-    data = []
+    X, y = [], []
     with open(data_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for i, row in enumerate(csv_reader):
             if i == 0:
                 continue
-            data.append((row[:-1], row[-1]))
-    return zip(*data)
+            X.append([_to_float(el) for el in row[:-1]])
+            y.append(_to_float(row[-1]))
+    return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
+
+def _get_accuracy(model, X, y):
+    prediction = model.predict(X)
+    accuracy = np.mean(prediction == y)
+    return accuracy
 
 
-def main(X_train, X_val, y_train, y_val, clf_name):
-    clf, params = _CLASSIFIERS[clf_name]
-    print(f"Running GS for {clf_name}...")
-    accuracy, best_params = run_grid_search(clf, params, X_train, X_val, y_train, y_val)
-    print(f">>> {clf_name} score = {accuracy}")
-    print(f"{best_params}")
-    return accuracy, best_params
+def main(model_name, dataset_name):
+    X_train, X_test, y_train, y_test = _get_dataset(dataset_name)
+
+    print(f">>> {model_name}")
+    model = run_grid_search(model_name, X_train, y_train)
+    accuracy = _get_accuracy(model, X_test, y_test)
+
+    print(f"valid score = {model.best_score_}")
+    print(f"test score = {accuracy}")
+    print(f"{model.best_params_}")
+    return model
 
 
 def _parse_args():
@@ -86,17 +111,9 @@ def _parse_args():
         type=str,
         help=f"One of {_VALID_DATASET_NAMES}",
     )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Whether or not to run test predictions and to output to csv file",
-    )
-    return parser.parse_args()
+    return vars(parser.parse_args())
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    X, y = _get_dataset(args.dataset_name)
-
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-    main(X_train, X_val, y_train, y_val, clf_name=args.model_name)
+    main(**args)
