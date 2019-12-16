@@ -79,23 +79,30 @@ def _to_float(a_str):
         a_float = 0.
     return a_float
 
+def _split_row(row, selected_indexes=None):
+    if selected_indexes is None:
+        return row[:-1], row[-1]
 
-def read_dataset(dataset_name, head=False):
+    row_X = [el for i, el in enumerate(row[:-1]) if i in selected_indexes]
+    return row_X, row[-1]
+
+def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
     data_path = _DATA_PATH / dataset_name / "data" / f"{dataset_name}_csv.csv"
     X, y = [], []
     with open(data_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for i, row in enumerate(csv_reader):
+            row_X, row_y = _split_row(row, selected_feature_indexes)
             if i == 0:
                 if head:
-                    return row[:-1], row[-1]
+                    return row_X, row_y
                 continue
-            X.append([_to_float(el) for el in row[:-1]])
-            y.append(_to_float(row[-1]))
+            X.append([_to_float(el) for el in row_X])
+            y.append(_to_float(row_y))
     return X, y
 
-def _get_dataset(dataset_name):
-    X, y = read_dataset(dataset_name)
+def _get_dataset(dataset_name, selected_feature_indexes=None):
+    X, y = read_dataset(dataset_name, selected_feature_indexes=selected_feature_indexes)
     return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
 
 def _get_accuracy(model, X, y):
@@ -104,8 +111,9 @@ def _get_accuracy(model, X, y):
     return accuracy
 
 
-def main(model_name, dataset_name):
-    X_train, X_test, y_train, y_test = _get_dataset(dataset_name)
+def main(model_name, dataset_name, selected_feature_indexes=None):
+    X_train, X_test, y_train, y_test = _get_dataset(dataset_name,
+                                                    selected_feature_indexes=selected_feature_indexes)
 
     print(f">>> {model_name}")
     model = run_grid_search(model_name, X_train, y_train)
