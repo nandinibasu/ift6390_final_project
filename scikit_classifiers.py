@@ -26,68 +26,99 @@ DATASETS = {
     "heart-statlog": "heart-statlog_csv.csv",
     "cervical-cancer": "clean_cervical-cancer_csv.csv"
 }
+
+
 CLASSIFIERS = {
     "MLP": (
-        MLPClassifier(early_stopping=True, random_state=_SEED),
-        {
-            "validation_fraction": [0.005, 0.01, 0.05, 0.1],
-            "hidden_layer_sizes": [(10, 10), 25, (25, 25), 50, 100, (50, 50), 150, 250],
-            "alpha": [0.0001, 0.001, 0.005, 0.00005, 0.]
-        }
+        MLPClassifier(
+            early_stopping=True,
+            hidden_layer_sizes=(50, 50),
+            validation_fraction=0.2,
+            random_state=_SEED,
+        ), {}
     ),
     "RF": (
-        RandomForestClassifier(random_state=_SEED),
-        {
-            "n_estimators": [5, 10, 20],
-            "max_depth": [5, 10, 20]
-        }
+        RandomForestClassifier(
+            random_state=_SEED,
+            max_depth=2,
+            n_estimators=30,
+            ), {}
     ),
     "Decision Tree": (
-        DecisionTreeClassifier(random_state=_SEED),
-        {
-            "max_depth": [5, 10, 20]
-        }
+        DecisionTreeClassifier(
+            max_depth=2,
+            random_state=_SEED,
+        ), {}
     ),
     "LR_L1": (
-        LogisticRegression(solver="liblinear", penalty="l1", multi_class="ovr", random_state=_SEED),
-        {
-            # Smaller means more regularization
-            "C": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
-        }
+        LogisticRegression(
+            solver="liblinear",
+            multi_class="ovr",
+            penalty="l1",
+            C=0.1,
+            class_weight="balanced",
+            random_state=_SEED
+        ), {}
     ),
     "LR_L2": (
-        LogisticRegression(solver="liblinear", multi_class="ovr", penalty="l2", random_state=_SEED),
-        {
-            # Smaller means more regularization
-            "C": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
-        }
+        LogisticRegression(
+            solver="liblinear",
+            multi_class="ovr",
+            penalty="l2",
+            C=0.1,
+            class_weight="balanced",
+            random_state=_SEED
+        ), {}
     ),
 
 }
 
-def run_grid_search(model_name, X_train, y_train):
-    clf, params = CLASSIFIERS[model_name]
 
+def run_grid_search(model_name, X_train, y_train):
+    """
+    Run grid search on a given classifier
+    """
+    clf, params = CLASSIFIERS[model_name]
     clf = GridSearchCV(clf, params, cv=5, n_jobs=-1)
     clf.fit(X_train, y_train)
+
     return clf
 
 def _label_to_float(a_str):
+    """
+    Convert labels as str to float
+    """
     if a_str == "present":
-        return 1.
+        label = 1.
     elif a_str == "absent":
-        return 0.
+        label = 0.
     else:
-        return float(a_str)
+        label = float(a_str)
+
+    return label
 
 def _split_row(row, selected_indexes=None):
+    """
+    Split row into features, label.
+    The last element of the row is always the label.
+    """
     if selected_indexes is None:
-        return row[:-1], row[-1]
+        row_X = row[:-1]
+    else:
+        row_X = [
+            el for i, el in enumerate(row[:-1]) if i in selected_indexes
+        ]
+    row_y = row[-1]
 
-    row_X = [el for i, el in enumerate(row[:-1]) if i in selected_indexes]
     return row_X, row[-1]
 
 def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
+    """
+    Read dataset from csv file and return it as a supervised X, y dataset.
+    Returns only the selected indexes.
+    If head=True, returns only the header names.
+    If header=False, returns only the data.
+    """
     data_path = _DATA_PATH / dataset_name / "data" / DATASETS[dataset_name]
     X, y = [], []
     with open(data_path, "r") as csv_file:
@@ -100,36 +131,62 @@ def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
                 continue
             X.append([float(el) for el in row_X])
             y.append(_label_to_float(row_y))
+
     return X, y
 
 def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
-    X, y = read_dataset(dataset_name, selected_feature_indexes=selected_feature_indexes)
+    """
+    Read and split dataset into train/test sets.
+    If balance=True, applies SMOTHE algorithm to rebalance the data.
+    """
+    X, y = read_dataset(
+                dataset_name,
+                selected_feature_indexes=selected_feature_indexes
+    )
     if balance:
         print("balancing the dataset")
         smote = SMOTE(random_state=42)
         X, y = smote.fit_resample(X, y)
-        X, y = shuffle(X, y)
-    return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
+    # Split train/test set
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                            test_size=_TEST_SIZE,
+                                            shuffle=True,
+                                            random_state=_SEED)
 
+    return X_train, X_test, y_train, y_test
 
 def _get_accuracy(model, X, y, z=1.96):
+    """
+    Return the accuracy of the predictions and the confidence.
+    By default, z=1.96 for a 95% interval.
+    """
     prediction = model.predict(X)
     accuracy = np.mean(prediction == y)
     confidence = z * math.sqrt( (accuracy * (1 - accuracy)) / len(y))
+
     return accuracy, confidence
 
 
-def main(model_name, dataset_name, balance, selected_feature_indexes=None):
-    X_train, X_test, y_train, y_test = _get_dataset(dataset_name, balance,
-                                                    selected_feature_indexes=selected_feature_indexes)
+def main(model_name, dataset_name, balance=True,
+         selected_feature_indexes=None, verbose=True):
+    """
+    Main training function.
 
-    print(f">>> {model_name}")
+    Given a model and a dataset, run grid search to find the best estimator.
+    """
+    X_train, X_test, y_train, y_test = _get_dataset(
+            dataset_name,
+            balance,
+            selected_feature_indexes=selected_feature_indexes)
     model = run_grid_search(model_name, X_train, y_train)
     accuracy, confidence = _get_accuracy(model, X_test, y_test)
 
-    print(f"valid score = {model.best_score_}")
-    print(f"test score = {accuracy} += {confidence}")
-    print(f"{model.best_params_}")
+    if verbose:
+        print(f">>> {model_name}")
+        print(f"valid score = {model.best_score_}")
+        print(f"test score = {accuracy} += {confidence}")
+        print(f"{model.best_params_}")
+
     return model
 
 
