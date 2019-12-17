@@ -49,3 +49,8 @@ visualize grid search and do feature selection.
 - `feature_selection.ipynb`
 
 Those notebooks have been used to produce the figures shown in the report.
+
+
+## Results 
+
+Some raw results have been pushed in `HP_results.md`
