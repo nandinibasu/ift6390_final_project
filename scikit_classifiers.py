@@ -22,11 +22,11 @@ from sklearn.utils import shuffle
 _TEST_SIZE = 0.2
 _SEED = 544
 _DATA_PATH = pathlib.Path("data/")
+
 DATASETS = {
     "heart-statlog": "heart-statlog_csv.csv",
     "cervical-cancer": "clean_cervical-cancer_csv.csv"
 }
-
 
 CLASSIFIERS = {
     "MLP": (
@@ -73,6 +73,10 @@ CLASSIFIERS = {
 
 }
 
+SELECTED_FEATURES = {
+    "heart-statlog": [0, 1, 2, 8, 9, 11, 12, 13],
+    "cervical-cancer": [3, 6, 8, 9, 12, 14, 16, 19, 20, 21, 22, 23, 24, 25, 26]
+}
 
 def run_grid_search(model_name, X_train, y_train):
     """
@@ -112,19 +116,20 @@ def _split_row(row, selected_indexes=None):
 
     return row_X, row[-1]
 
-def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
+def read_dataset(dataset_name, select_features=False, head=False):
     """
     Read dataset from csv file and return it as a supervised X, y dataset.
-    Returns only the selected indexes.
+    If select_features=True, returns only the selected indexes.
     If head=True, returns only the header names.
     If header=False, returns only the data.
     """
     data_path = _DATA_PATH / dataset_name / "data" / DATASETS[dataset_name]
     X, y = [], []
+    selected_indexes = SELECTED_FEATURES[dataset_name] if select_features else None
     with open(data_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for i, row in enumerate(csv_reader):
-            row_X, row_y = _split_row(row, selected_feature_indexes)
+            row_X, row_y = _split_row(row, selected_indexes)
             if i == 0:
                 if head:
                     return row_X, row_y
@@ -134,14 +139,14 @@ def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
 
     return X, y
 
-def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
+def _get_dataset(dataset_name, balance=True, select_features=False):
     """
     Read and split dataset into train/test sets.
     If balance=True, applies SMOTHE algorithm to rebalance the data.
     """
     X, y = read_dataset(
                 dataset_name,
-                selected_feature_indexes=selected_feature_indexes
+                select_features=select_features
     )
     if balance:
         print("balancing the dataset")
@@ -167,8 +172,7 @@ def _get_accuracy(model, X, y, z=1.96):
     return accuracy, confidence
 
 
-def main(model_name, dataset_name, balance=True,
-         selected_feature_indexes=None, verbose=True):
+def main(model_name, dataset_name, balance=True, select_features=False, verbose=True):
     """
     Main training function.
 
@@ -177,7 +181,7 @@ def main(model_name, dataset_name, balance=True,
     X_train, X_test, y_train, y_test = _get_dataset(
             dataset_name,
             balance,
-            selected_feature_indexes=selected_feature_indexes)
+            select_features=select_features)
     model = run_grid_search(model_name, X_train, y_train)
     accuracy, confidence = _get_accuracy(model, X_test, y_test)
 
