@@ -22,7 +22,10 @@ from sklearn.utils import shuffle
 _TEST_SIZE = 0.2
 _SEED = 544
 _DATA_PATH = pathlib.Path("data/")
-VALID_DATASET_NAMES = ["heart-statlog", "cervical-cancer"]
+DATASETS = {
+    "heart-statlog": "heart-statlog_csv.csv",
+    "cervical-cancer": "clean_cervical-cancer_csv.csv"
+}
 CLASSIFIERS = {
     "MLP": (
         MLPClassifier(early_stopping=True, random_state=_SEED),
@@ -69,18 +72,13 @@ def run_grid_search(model_name, X_train, y_train):
     clf.fit(X_train, y_train)
     return clf
 
-def _to_float(a_str):
+def _label_to_float(a_str):
     if a_str == "present":
         return 1.
     elif a_str == "absent":
         return 0.
-
-    try:
-        a_float = float(a_str)
-    except ValueError:
-        # TODO handle missing data
-        a_float = 0.
-    return a_float
+    else:
+        return float(a_str)
 
 def _split_row(row, selected_indexes=None):
     if selected_indexes is None:
@@ -90,7 +88,7 @@ def _split_row(row, selected_indexes=None):
     return row_X, row[-1]
 
 def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
-    data_path = _DATA_PATH / dataset_name / "data" / f"{dataset_name}_csv.csv"
+    data_path = _DATA_PATH / dataset_name / "data" / DATASETS[dataset_name]
     X, y = [], []
     with open(data_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -100,8 +98,8 @@ def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
                 if head:
                     return row_X, row_y
                 continue
-            X.append([_to_float(el) for el in row_X])
-            y.append(_to_float(row_y))
+            X.append([float(el) for el in row_X])
+            y.append(_label_to_float(row_y))
     return X, y
 
 def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
@@ -147,7 +145,7 @@ def _parse_args():
         "-d",
         "--dataset-name",
         type=str,
-        help=f"One of {VALID_DATASET_NAMES}",
+        help=f"One of {list(DATASETS.keys())}",
     )
     parser.add_argument(
         "-b",
