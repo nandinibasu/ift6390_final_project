@@ -15,6 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
+from imblearn.over_sampling import SMOTE
 
 _TEST_SIZE = 0.2
 _SEED = 544
@@ -101,8 +102,12 @@ def read_dataset(dataset_name, selected_feature_indexes=None, head=False):
             y.append(_to_float(row_y))
     return X, y
 
-def _get_dataset(dataset_name, selected_feature_indexes=None):
+def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
     X, y = read_dataset(dataset_name, selected_feature_indexes=selected_feature_indexes)
+    if balance:
+        print("balancing the dataset")
+        smote = SMOTE(random_state=42)
+        X, y = smote.fit_resample(X, y)
     return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
 
 def _get_accuracy(model, X, y):
@@ -111,8 +116,8 @@ def _get_accuracy(model, X, y):
     return accuracy
 
 
-def main(model_name, dataset_name, selected_feature_indexes=None):
-    X_train, X_test, y_train, y_test = _get_dataset(dataset_name,
+def main(model_name, dataset_name, balance, selected_feature_indexes=None):
+    X_train, X_test, y_train, y_test = _get_dataset(dataset_name, balance,
                                                     selected_feature_indexes=selected_feature_indexes)
 
     print(f">>> {model_name}")
@@ -138,6 +143,12 @@ def _parse_args():
         "--dataset-name",
         type=str,
         help=f"One of {VALID_DATASET_NAMES}",
+    )
+    parser.add_argument(
+        "-b",
+        "--balance",
+        action="store_true",
+        help="balance dataset using SMOTE",
     )
     return vars(parser.parse_args())
 
