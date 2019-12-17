@@ -23,12 +23,29 @@ pip install -r requirements.txt  # Install the requirements
 ```
 
 
-### Data 
+### Data
 - Download the [Heart Disease dataset](https://datahub.io/machine-learning/heart-statlog#data) unzip it in `data/heart-statlog`.
 - Download the [Cervical Cancer dataset](https://datahub.io/machine-learning/cervical-cancer#data) and unzip it in `data/cervical-cancer`. 
 
 
-### Classifiers
+### Available Classifiers
 - MLP
 - Random Forest
 - Logistic Regression
+
+
+## Running the code
+
+`scikit_classifiers.py` is a script that performs grid search on a for a 
+classifier given a dataset. 
+```
+python scikit_classifiers.py -m <MODEL_NAME> -d <DATASET_NAME> --help 
+```
+
+The repo also include a few useful notebooks to help understand the data, 
+visualize grid search and do feature selection.
+- `data_exploration.ipynb`
+- `grid_search.ipynb`
+- `feature_selection.ipynb`
+
+Those notebooks have been used to produce the figures shown in the report.
