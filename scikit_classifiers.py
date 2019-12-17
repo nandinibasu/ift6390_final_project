@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from imblearn.over_sampling import SMOTE
+from sklearn.utils import shuffle
 
 _TEST_SIZE = 0.2
 _SEED = 544
@@ -108,6 +109,7 @@ def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
         print("balancing the dataset")
         smote = SMOTE(random_state=42)
         X, y = smote.fit_resample(X, y)
+        X, y = shuffle(X, y)
     return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
 
 def _get_accuracy(model, X, y):
