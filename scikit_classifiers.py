@@ -188,7 +188,7 @@ def main(model_name, dataset_name, balance=True, select_features=False, verbose=
     if verbose:
         print(f">>> {model_name}")
         print(f"valid score = {model.best_score_}")
-        print(f"test score = {accuracy} += {confidence}")
+        print(f"test score = {accuracy} +/- {confidence}")
         print(f"{model.best_params_}")
 
     return model
