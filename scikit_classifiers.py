@@ -8,6 +8,7 @@ import csv
 import argparse
 import numpy as np
 import pathlib
+import math
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
@@ -112,10 +113,12 @@ def _get_dataset(dataset_name, balance, selected_feature_indexes=None):
         X, y = shuffle(X, y)
     return train_test_split(X, y, test_size=_TEST_SIZE, random_state=_SEED, shuffle=True)
 
-def _get_accuracy(model, X, y):
+
+def _get_accuracy(model, X, y, z=1.96):
     prediction = model.predict(X)
     accuracy = np.mean(prediction == y)
-    return accuracy
+    confidence = z * math.sqrt( (accuracy * (1 - accuracy)) / len(y))
+    return accuracy, confidence
 
 
 def main(model_name, dataset_name, balance, selected_feature_indexes=None):
@@ -124,10 +127,10 @@ def main(model_name, dataset_name, balance, selected_feature_indexes=None):
 
     print(f">>> {model_name}")
     model = run_grid_search(model_name, X_train, y_train)
-    accuracy = _get_accuracy(model, X_test, y_test)
+    accuracy, confidence = _get_accuracy(model, X_test, y_test)
 
     print(f"valid score = {model.best_score_}")
-    print(f"test score = {accuracy}")
+    print(f"test score = {accuracy} += {confidence}")
     print(f"{model.best_params_}")
     return model
 
