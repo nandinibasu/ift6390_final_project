@@ -10,7 +10,6 @@ import numpy as np
 import pathlib
 import math
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -18,6 +17,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from imblearn.over_sampling import SMOTE
 from sklearn.utils import shuffle
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import normalize
+
 
 _TEST_SIZE = 0.2
 _SEED = 544
@@ -27,6 +30,7 @@ DATASETS = {
     "heart-statlog": "heart-statlog_csv.csv",
     "cervical-cancer": "clean_cervical-cancer_csv.csv"
 }
+
 
 CLASSIFIERS = {
     "MLP": (
@@ -70,12 +74,21 @@ CLASSIFIERS = {
             random_state=_SEED
         ), {}
     ),
-
+    "Baseline": (
+        DummyClassifier(
+            strategy="most_frequent"
+        ),{},
+    ),
+    "Random": (
+        DummyClassifier(
+            strategy="uniform"
+        ), {},
+    ),
 }
 
 SELECTED_FEATURES = {
-    "heart-statlog": [0, 1, 2, 8, 9, 11, 12, 13],
-    "cervical-cancer": [3, 6, 8, 9, 12, 14, 16, 19, 20, 21, 22, 23, 24, 25, 26]
+    "heart-statlog": [0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13],
+    "cervical-cancer": [0, 1, 2, 3, 4, 5, 6, 22, 23, 24, 25, 26]
 }
 
 def run_grid_search(model_name, X_train, y_train):
@@ -83,7 +96,8 @@ def run_grid_search(model_name, X_train, y_train):
     Run grid search on a given classifier
     """
     clf, params = CLASSIFIERS[model_name]
-    clf = GridSearchCV(clf, params, cv=5, n_jobs=-1)
+
+    clf = GridSearchCV(clf, params, scoring="f1", cv=5, n_jobs=-1)
     clf.fit(X_train, y_train)
 
     return clf
@@ -148,6 +162,10 @@ def _get_dataset(dataset_name, balance=True, select_features=False):
                 dataset_name,
                 select_features=select_features
     )
+
+    # Normalize data between 0 and 1
+    X = normalize(X)
+
     # Split train/test set
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                             test_size=_TEST_SIZE,
@@ -155,22 +173,28 @@ def _get_dataset(dataset_name, balance=True, select_features=False):
                                             random_state=_SEED)
 
     if balance:
-        print("balancing the dataset")
-        smote = SMOTE(random_state=42)
+        # Add synthetic data for minority class
+        smote = SMOTE(random_state=_SEED)
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
     return X_train, X_test, y_train, y_test
 
-def _get_accuracy(model, X, y, z=1.96):
+def _compute_metrics(model, X, y):
     """
-    Return the accuracy of the predictions and the confidence.
-    By default, z=1.96 for a 95% interval.
+    Return the accuracy of the predictions, the F1 score
+    and the confusion matrix.
     """
     prediction = model.predict(X)
     accuracy = np.mean(prediction == y)
-    confidence = z * math.sqrt( (accuracy * (1 - accuracy)) / len(y))
 
-    return accuracy, confidence
+    cm = confusion_matrix(y, prediction)
+
+    tn, fp, fn, tp = cm.ravel()
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = 2 * precision * recall / (precision + recall)
+
+    return accuracy, f1, cm
 
 
 def main(model_name, dataset_name, balance=True, select_features=False, verbose=True):
@@ -185,12 +209,14 @@ def main(model_name, dataset_name, balance=True, select_features=False, verbose=
             select_features=select_features)
 
     model = run_grid_search(model_name, X_train, y_train)
-    accuracy, confidence = _get_accuracy(model, X_test, y_test)
+    accuracy, f1, confusion_matrix = _compute_metrics(model, X_test, y_test)
 
     if verbose:
         print(f">>> {model_name}")
         print(f"valid score = {model.best_score_}")
-        print(f"test score = {accuracy} +/- {confidence}")
+        print(f"test accuracy = {accuracy}")
+        print(f"test f1 = {f1}")
+        print(confusion_matrix)
         print(f"{model.best_params_}")
 
     return model
@@ -215,6 +241,12 @@ def _parse_args():
         "--balance",
         action="store_true",
         help="balance dataset using SMOTE",
+    )
+    parser.add_argument(
+        "-s",
+        "--select_features",
+        action="store_true",
+        help="select features",
     )
     return vars(parser.parse_args())
 

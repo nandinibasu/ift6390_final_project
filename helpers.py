@@ -47,6 +47,7 @@ def plot_grid_search(cv_results, model_name, dataset_name, balance=True):
                 if isinstance(p[param_names[0]], tuple)
                 else 0
             )
+
     elif len(param_names) == 2:
         x_title = list(params[0].keys())[0]
         y_title = list(params[0].keys())[1]
@@ -64,7 +65,7 @@ def plot_grid_search(cv_results, model_name, dataset_name, balance=True):
             size=10,
             color=cv_results["mean_test_score"],
             colorbar=dict(
-                title="mean_test_score"
+                title="mean_f1_score"
             ),
             colorscale="Magma"
         ),
