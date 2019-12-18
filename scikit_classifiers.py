@@ -148,15 +148,16 @@ def _get_dataset(dataset_name, balance=True, select_features=False):
                 dataset_name,
                 select_features=select_features
     )
-    if balance:
-        print("balancing the dataset")
-        smote = SMOTE(random_state=42)
-        X, y = smote.fit_resample(X, y)
     # Split train/test set
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                             test_size=_TEST_SIZE,
                                             shuffle=True,
                                             random_state=_SEED)
+
+    if balance:
+        print("balancing the dataset")
+        smote = SMOTE(random_state=42)
+        X_train, y_train = smote.fit_resample(X_train, y_train)
 
     return X_train, X_test, y_train, y_test
 
@@ -182,6 +183,7 @@ def main(model_name, dataset_name, balance=True, select_features=False, verbose=
             dataset_name,
             balance,
             select_features=select_features)
+
     model = run_grid_search(model_name, X_train, y_train)
     accuracy, confidence = _get_accuracy(model, X_test, y_test)
 
