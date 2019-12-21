@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.metrics import confusion_matrix
+import numpy as np
 
 
 def print_models():
@@ -116,7 +118,7 @@ def save_conf_matrix_gender_specific(cm_male, cm_female, model_type, SMOTE):
 
     plt.figure(figsize=(12, 5))
 
-    title = "Confusion Matrices for Heart Disease using " + model_type + SMOTE
+    title = "Confusion Matrices for Heart Disease using " + model_type +" "+ SMOTE
 
     plt.suptitle(title, fontsize=24)
     plt.subplots_adjust(wspace=0.4, hspace=0.4)
@@ -161,3 +163,19 @@ def plot_target_distribution(target):
     plt.xlabel("Target (0 = no cervical cancer, 1= cervical cancer)")
     # plt.savefig('after_smote_{}.png'.format(dataset_name))
     print("saved figure")
+
+def plot_conf_matrices(X, y, model, model_name, balance):
+    male_x, male_y, female_x, female_y = separate_by_gender(X, y)
+
+    male_prediction = model.predict(male_x)
+    male_accuracy = np.mean(male_prediction == male_y)
+    print("Male Acc  : ", male_accuracy)
+    cm_male = confusion_matrix(male_y, male_prediction)
+
+    female_prediction = model.predict(female_x)
+    female_accuracy = np.mean(female_prediction == female_y)
+    print("Female Acc: ", female_accuracy)
+    print(female_prediction)
+    cm_female = confusion_matrix(female_y, female_prediction)
+
+    save_conf_matrix_gender_specific(cm_male, cm_female, model_type=model_name, SMOTE=balance)
