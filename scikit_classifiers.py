@@ -20,6 +20,7 @@ from sklearn.utils import shuffle
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import normalize
+from helpers import separate_by_gender, save_conf_matrix_gender_specific, plot_target_distribution
 
 
 _TEST_SIZE = 0.2
@@ -174,12 +175,14 @@ def _get_dataset(dataset_name, balance=True, select_features=False):
 
     if balance:
         # Add synthetic data for minority class
+        print("balancing minority class")
         smote = SMOTE(random_state=_SEED)
         X_train, y_train = smote.fit_resample(X_train, y_train)
+        plot_target_distribution(y_train)
 
     return X_train, X_test, y_train, y_test
 
-def _compute_metrics(model, X, y):
+def _compute_metrics(model, X, y, plot_conf_matrices, balance, model_name):
     """
     Return the accuracy of the predictions, the F1 score
     and the confusion matrix.
@@ -194,10 +197,26 @@ def _compute_metrics(model, X, y):
     recall = tp / (tp + fn)
     f1 = 2 * precision * recall / (precision + recall)
 
+    if plot_conf_matrices:
+        male_x, male_y, female_x, female_y = separate_by_gender(X, y)
+
+        male_prediction = model.predict(male_x)
+        male_accuracy = np.mean(male_prediction == male_y)
+        print("Male Acc  : ", male_accuracy)
+        cm_male = confusion_matrix(male_y, male_prediction)
+
+        female_prediction = model.predict(female_x)
+        female_accuracy = np.mean(female_prediction == female_y)
+        print("Female Acc: ", female_accuracy)
+        print(female_prediction)
+        cm_female = confusion_matrix(female_y, female_prediction)
+
+        save_conf_matrix_gender_specific(cm_male, cm_female, model_type=model_name, SMOTE=balance)
+
     return accuracy, f1, cm
 
 
-def main(model_name, dataset_name, balance=True, select_features=False, verbose=True):
+def main(model_name, dataset_name, balance=True, select_features=False, verbose=True, plot_conf_matrices=False):
     """
     Main training function.
 
@@ -209,7 +228,7 @@ def main(model_name, dataset_name, balance=True, select_features=False, verbose=
             select_features=select_features)
 
     model = run_grid_search(model_name, X_train, y_train)
-    accuracy, f1, confusion_matrix = _compute_metrics(model, X_test, y_test)
+    accuracy, f1, confusion_matrix = _compute_metrics(model, X_test, y_test, plot_conf_matrices,balance,model_name)
 
     if verbose:
         print(f">>> {model_name}")
@@ -247,6 +266,12 @@ def _parse_args():
         "--select_features",
         action="store_true",
         help="select features",
+    )
+    parser.add_argument(
+        "-p",
+        "--plot_confusion_matrices",
+        type=bool,
+        help="plot confusion matrices per subgroup (male/female). Only applicable to heart-statlog dataset. ",
     )
     return vars(parser.parse_args())
 

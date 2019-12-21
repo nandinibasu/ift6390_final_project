@@ -7,6 +7,9 @@
 from scikit_classifiers import DATASETS
 from scikit_classifiers import CLASSIFIERS
 import plotly.graph_objects as go
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def print_models():
@@ -80,3 +83,81 @@ def plot_grid_search(cv_results, model_name, dataset_name, balance=True):
     )
 
     return fig
+
+def separate_by_gender(x,y):
+    """
+    female 0
+    male 1
+    """
+    male_x = []
+    male_y = []
+    female_x = []
+    female_y = []
+    print(len(x))
+    print()
+
+    for i,j in zip(x,y):
+        # print(i)
+        print(i[1])
+        if i[1] == 1:
+            male_x.append(i)
+            male_y.append(j)
+        elif i[1] == 0:
+            female_x.append(i)
+            female_y.append(j)
+    print("len of male  : ", len(male_y))
+    print("len of female: ", len(female_y))
+    return male_x, male_y, female_x, female_y
+
+
+def save_conf_matrix_gender_specific(cm_male, cm_female, model_type, SMOTE):
+
+    sns.set_style("whitegrid")
+
+    plt.figure(figsize=(12, 5))
+
+    title = "Confusion Matrices for Heart Disease using " + model_type + SMOTE
+
+    plt.suptitle(title, fontsize=24)
+    plt.subplots_adjust(wspace=0.4, hspace=0.4)
+
+    plt.subplot(1, 2, 1)
+    plt.title("Male")
+
+    sns.heatmap(cm_male, annot=True, cmap="Blues", fmt="d", cbar=False, annot_kws={"size": 24})
+    plt.xlabel("Pred")
+    plt.ylabel("True")
+
+    b, t = plt.ylim()  # discover the values for bottom and top
+    b += 0.5  # Add 0.5 to the bottom
+    t -= 0.5  # Subtract 0.5 from the top
+    plt.ylim(b, t)  # update the ylim(bottom, top) values
+
+    plt.subplot(1, 2, 2)
+    plt.title("Female")
+
+    sns.heatmap(cm_female, annot=True, cmap="Blues", fmt="d", cbar=False, annot_kws={"size": 24})
+    plt.xlabel("Pred")
+    plt.ylabel("True")
+
+    b, t = plt.ylim()  # discover the values for bottom and top
+    b += 0.5  # Add 0.5 to the bottom
+    t -= 0.5  # Subtract 0.5 from the top
+    plt.ylim(b, t)  # update the ylim(bottom, top) values
+
+    plt.savefig(title+".png")
+    print("saved CM plot")
+
+def plot_target_distribution(target):
+    sns.set(style="whitegrid")
+    sns.set_palette(sns.color_palette("Set2", n_colors=5))
+
+    plt.figure(figsize=(15, 12))
+    plt.subplots_adjust(wspace=0.4, hspace=0.4)
+    y_df = pd.DataFrame({'target': target})
+    plt.subplot(2, 2, 1)
+    plt.title("Distribution of diseased and not diseased patients after SMOTE.")
+    sns.countplot(data=y_df, x='target')
+    plt.xlabel("Target (0 = no cervical cancer, 1= cervical cancer)")
+    # plt.savefig('after_smote_{}.png'.format(dataset_name))
+    print("saved figure")
