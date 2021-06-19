@@ -10,6 +10,13 @@ Then copy the HTTTP git link
 then do - git clone <link>
 once you make changes in the repo locally, 
 
+Go to git button on left
+click on + of files you want to stage
+then click on tick to commit those files
+it'll ask you for commit message
+then click on ... next to tick- click on push
+then might ask you for username and password
+enter and done!
 
 
 # IFT6390 - Final Project
