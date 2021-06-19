@@ -1,3 +1,17 @@
+New Instructions:
+
+conda activate py3
+python3 scikit_classifiers.py -m MLP -d heart-statlog 
+
+To fetch a repo from git:
+
+Go to the repo - click on Fork
+Then copy the HTTTP git link 
+then do - git clone <link>
+once you make changes in the repo locally, 
+
+
+
 # IFT6390 - Final Project
 
 This project is about Interpretable Machine Learning in the Low-Data Regime.

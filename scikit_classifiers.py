@@ -215,13 +215,13 @@ def main(model_name, dataset_name, balance=True, select_features=False, verbose=
     accuracy, f1, confusion_matrix = _compute_metrics(model, X_test, y_test)
 
     if verbose:
-        print(f">>> {model_name}")
+        print(f">>>{model_name}")
         print(f"valid score = {model.best_score_}")
         print(f"test accuracy = {accuracy}")
         print(f"test f1 = {f1}")
         print(confusion_matrix)
         print(f"{model.best_params_}")
-
+    
     return model
 
 
